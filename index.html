@@ -219,7 +219,7 @@
 
             <!-- 🌟 ปุ่มใหม่สำหรับแก้ปัญหากดฝากผิดแบบตรงๆ -->
             <button class="btn-outline admin-only" style="width: 100%; margin-top: 12px; border-color: rgba(245, 158, 11, 0.4); color: var(--accent-orange); font-size: 13px;" onclick="submitAction('หักยอดฝากผิด')">
-                🛠️ หักยอดที่กดฝากผิด (ดึงของออก)
+                🛠️ หักยอดที่กดฝากผิด (ดึงของออก & ลดโควต้า)
             </button>
         </div>
     </div>
@@ -268,6 +268,13 @@
                 <label>จำนวนที่ยืม / คืน</label>
                 <input type="number" id="debtQty" placeholder="0" min="1">
             </div>
+
+            <!-- กล่อง Checkbox เชื่อมต่อกับคลัง -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: -10px; margin-bottom: 0;">
+                <input type="checkbox" id="syncStashDebt" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-orange);">
+                <label for="syncStashDebt" style="margin-bottom: 0; font-size: 13px; cursor: pointer; color: var(--text-main);">🔄 นำของออก/เข้าคลังด้วยอัตโนมัติ</label>
+            </div>
+
             <div class="btn-group" style="margin-top: 20px;">
                 <button class="btn-withdraw" style="background-color: var(--accent-orange);" onclick="managePersonalDebt('add')">➕ ยืนยัน</button>
                 <button class="btn-primary" onclick="managePersonalDebt('pay')">➖ ชำระหนี้</button>
@@ -298,7 +305,7 @@
                     <option value="all">ทุกประเภท</option>
                     <option value="ฝาก">เฉพาะ นำเข้า</option>
                     <option value="เบิก">เฉพาะ เบิกออก</option>
-                    <option value="ยืม/ติดหนี้">เฉพาะ สร้าง/ชำระหนี้</option>
+                    <option value="ยืม/ติดหนี้">เฉพาะ สร้างหนี้/ชำระหนี้</option>
                     <option value="โอนยอด">เฉพาะ สลับ/โอนยอด</option>
                     <option value="แก้ไข/หักยอด">เฉพาะ แก้ไข/หักยอด</option>
                 </select>
@@ -548,11 +555,13 @@
             } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
         }
 
+        // ================= จัดการหนี้ (เชื่อมต่อกับคลัง) =================
         window.managePersonalDebt = function(actionType) {
             try {
                 let m = document.getElementById('debtMemberSelect').value;
                 let i = document.getElementById('debtItemName').value.trim();
                 let q = parseInt(document.getElementById('debtQty').value);
+                let syncStash = document.getElementById('syncStashDebt').checked;
 
                 if(!m || i === "" || isNaN(q) || q <= 0) return alert("❌ กรุณากรอกข้อมูลหนี้ให้ครบถ้วน");
 
@@ -562,13 +571,35 @@
                 let logType = ""; let logNote = "";
 
                 if(actionType === 'add') {
+                    // ถ้าติ๊กถูกให้ดึงของจากคลังด้วย
+                    if (syncStash) {
+                        if(!window.gangData.stash[i] || window.gangData.stash[i] < q) {
+                            return alert(`❌ ${i} ในคลังมีไม่พอให้ยืม! (มีแค่ ${(window.gangData.stash[i]||0).toLocaleString()})\n\n💡 ถ้าต้องการแค่ลงบัญชีค่าปรับ โดยไม่ดึงของจากคลัง ให้เอาติ๊กถูกด้านล่างออกครับ`);
+                        }
+                        window.gangData.stash[i] -= q;
+                        if(window.gangData.stash[i] === 0) delete window.gangData.stash[i];
+                        logNote = 'ยืมของออกจากคลัง (เป็นหนี้)';
+                    } else {
+                        logNote = 'ตั้งหนี้/โดนค่าปรับ (ไม่ดึงของคลัง)';
+                    }
+
                     window.gangData.personalDebt[m][i] = currentDebt + q;
-                    logType = 'ยืม/ติดหนี้'; logNote = 'สร้างหนี้ค้างชำระแก๊ง';
-                } else if (actionType === 'pay') {
+                    logType = 'ยืม/ติดหนี้';
+                } 
+                else if (actionType === 'pay') {
                     if(currentDebt < q) return alert(`❌ ยอดชำระ (${q}) มากกว่ายอดหนี้ค้างชำระที่มีอยู่ (${currentDebt})`);
+                    
+                    // ถ้าติ๊กถูกให้เอาของคืนเข้าคลัง
+                    if (syncStash) {
+                        window.gangData.stash[i] = (window.gangData.stash[i] || 0) + q;
+                        logNote = 'คืนของเข้าคลัง (ชำระหนี้)';
+                    } else {
+                        logNote = 'ชำระหนี้/จ่ายค่าปรับ (ไม่เข้าคลัง)';
+                    }
+
                     window.gangData.personalDebt[m][i] = currentDebt - q;
                     if(window.gangData.personalDebt[m][i] === 0) delete window.gangData.personalDebt[m][i];
-                    logType = 'ชำระหนี้'; logNote = 'เคลียร์หนี้แก๊ง';
+                    logType = 'ชำระหนี้';
                 }
 
                 if(!window.gangData.masterItems.includes(i)) window.gangData.masterItems.push(i);
@@ -584,7 +615,6 @@
             } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
         }
 
-        // ================= ฟังก์ชันลบประวัติรายการ (ทีละอัน) =================
         window.deleteLog = function(originalIdx) {
             if(!window.isAdmin) return;
             if(confirm("⚠️ ยืนยันการลบประวัติรายการนี้?\n(หมายเหตุ: ลบแค่ข้อความประวัติเท่านั้น ไม่ได้ดึงของหรือหักยอดคืน)")) {
@@ -752,7 +782,6 @@
             let lst=document.getElementById('logList'), sq=(document.getElementById('logSearchQuery')?.value||"").toLowerCase(), tf=document.getElementById('logTypeFilter')?.value||"all";
             lst.innerHTML=''; if(window.gangData.logs.length===0){ lst.innerHTML='<p style="color:var(--text-muted); padding:20px 0;">ไม่มีประวัติทำรายการ</p>'; return; }
             
-            // ใช้ map เพื่อเก็บตำแหน่ง Index เดิมไว้ ก่อนที่จะโดน filter
             let fil = window.gangData.logs
                 .map((log, index) => ({ logData: log, originalIndex: index }))
                 .filter(item => {
@@ -762,6 +791,7 @@
                     if (tf === "ฝาก" && l.type === "ฝาก") matchType = true;
                     if (tf === "เบิก" && l.type === "เบิก") matchType = true;
                     if (tf === "ยืม/ติดหนี้" && (l.type === "ยืม/ติดหนี้" || l.type === "ชำระหนี้")) matchType = true;
+                    if (tf === "โอนยอด" && l.type === "โอนยอด") matchType = true;
                     if (tf === "แก้ไข/หักยอด" && l.type === "แก้ไข/หักยอด") matchType = true;
                     return matchSearch && matchType;
                 });
@@ -770,19 +800,18 @@
             
             fil.slice(0,100).forEach(item => {
                 let l = item.logData;
-                let originalIdx = item.originalIndex; // Index สำหรับใช้ลบ
+                let originalIdx = item.originalIndex; 
 
                 let col = 'var(--text-main)';
                 if (l.type === 'ฝาก') col = 'var(--accent-green)';
                 else if (l.type === 'เบิก') col = 'var(--accent-red)';
                 else if (l.type === 'ยืม/ติดหนี้') col = 'var(--accent-orange)';
                 else if (l.type === 'ชำระหนี้') col = 'var(--accent-blue)';
-                else if (l.type === 'แก้ไข/หักยอด') col = 'var(--accent-orange)';
+                else if (l.type === 'โอนยอด' || l.type === 'แก้ไข/หักยอด') col = 'var(--accent-orange)';
                 
                 let noteHtml = l.note ? `<span style="color:var(--text-muted); font-size:13px; margin-top:4px;">📝 ${l.note}</span>` : '';
                 let nameColor = (l.member === CENTRAL_NAME) ? 'var(--accent-gold)' : col;
 
-                // สร้างปุ่มลบประวัติ (เฉพาะแอดมิน)
                 let delLogBtn = window.isAdmin ? `<span style="color:var(--accent-red); cursor:pointer; font-size:12px; margin-left:10px; opacity:0.8;" onclick="deleteLog(${originalIdx})" title="ลบรายการนี้ทิ้ง">❌ ลบ</span>` : '';
 
                 lst.innerHTML+=`
