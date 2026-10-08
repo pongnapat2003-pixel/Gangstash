@@ -361,4 +361,449 @@
             if (data) window.gangData = data;
             
             if(!window.gangData) window.gangData = {};
-            window.gangData.members = Array.isArray
+            window.gangData.members = Array.isArray(window.gangData.members) ? window.gangData.members : Object.values(window.gangData.members || {});
+            window.gangData.logs = Array.isArray(window.gangData.logs) ? window.gangData.logs : Object.values(window.gangData.logs || {});
+            window.gangData.quota = Array.isArray(window.gangData.quota) ? window.gangData.quota : Object.values(window.gangData.quota || {});
+            window.gangData.masterItems = Array.isArray(window.gangData.masterItems) ? window.gangData.masterItems : Object.values(window.gangData.masterItems || {});
+            
+            if (window.gangData.masterItems.length === 0) {
+                window.gangData.masterItems = ["Money", "AED", "Bandage", "เงินแดง", "กัญชา", "อาวุธ"];
+            }
+            if (!window.gangData.stash) window.gangData.stash = {};
+            if (!window.gangData.contributions) window.gangData.contributions = {};
+            if (!window.gangData.debt) window.gangData.debt = {};
+            if (!window.gangData.personalDebt) window.gangData.personalDebt = {}; 
+            
+            renderAll();
+        });
+
+        window.saveData = function() {
+            if(!window.isAdmin) return;
+            set(dataRef, window.gangData);
+        }
+
+        window.loginAdmin = function() {
+            let pwd = prompt("กรุณาใส่รหัสผ่านเพื่อแก้ไขข้อมูล:");
+            if(pwd === ADMIN_PASSWORD) {
+                window.isAdmin = true;
+                document.body.classList.add('is-admin');
+                document.getElementById('loginBtn').style.display = 'none';
+                renderAll();
+            } else if (pwd !== null) {
+                alert("❌ รหัสผ่านไม่ถูกต้อง!");
+            }
+        }
+        window.logoutAdmin = function() {
+            window.isAdmin = false;
+            document.body.classList.remove('is-admin');
+            document.getElementById('loginBtn').style.display = 'block';
+            switchPage('page-stash');
+            renderAll();
+        }
+
+        // ================= รูปภาพไอเทม =================
+        const itemIcons = {
+            "money": "https://cdn.discordapp.com/attachments/1259608308768178317/1555032839580422164/image-removebg-preview_9.png?backend=b2&ex=6abf0cb0&is=6abdbb30&hm=02ee963d36171e071fa97c03174ee2a2d836b20145adee9430d26d3afa39a99a&",
+            "กัญชา": "https://cdn-icons-png.flaticon.com/512/5023/5023024.png",
+            "steel":"https://cdn.discordapp.com/attachments/1259608308768178317/1555034681869729883/silver_bar.png?backend=b2&ex=6abf0e67&is=6abdbce7&hm=01645a57ab930605446a38ba0871fcf52364feb90a2f272a829a5b17487d8cf7&",
+            "cement": "https://cdn.discordapp.com/attachments/1259608308768178317/1555049360343957584/image-removebg-preview_11.png?backend=b2&ex=6abf1c12&is=6abdca92&hm=0d87cda0de2c37bbe9a0364017a2b47aa563ee0813ad9b8ab379be4434202208&",     
+            "gold": "https://cdn.discordapp.com/attachments/1259608308768178317/1555035662896337078/gold_bar.png?backend=b2&ex=6abf0f51&is=6abdbdd1&hm=c11c5b94fb43b013cf4a12a9339e81a271d2e6a4288a6a53ffb95b6c27cde5f8&",
+            "copper": "https://cdn.discordapp.com/attachments/1259608308768178317/1555035662103617589/kupferbarren.png?backend=b2&ex=6abf0f51&is=6abdbdd1&hm=cf66854c565936bb3c61d15ea84f6945e62f01a19e049ffa2e4650d453262d51&",
+            "wood": "https://cdn.discordapp.com/attachments/1259608308768178317/1555037183130468412/image-removebg-preview_10.png?backend=b2&ex=6abf10bb&is=6abdbf3b&hm=680317fc1a878b65c627ac0aa74e95e832fe39d30a8a3ef6c228f50bdd4126aa&",
+            "bandage": "https://cdn.discordapp.com/attachments/1259608308768178317/1555049711193555004/image-removebg-preview_12.png?backend=b2&ex=6abf1c66&is=6abdcae6&hm=65b32bff5d087683a48b391f3815b66da6c8a2464c14ca73963d9cfa0b985ce8&",  
+            "diamond": "https://cdn.discordapp.com/attachments/1259608308768178317/1555030692604420096/image-removebg-preview_6.png?backend=b2&ex=6ac25670&is=6ac104f0&hm=21f26bf16355dab57c1a40d5f71883b7abe534dc424abae17852f689bd4d0249&",
+            "aed": "https://cdn.discordapp.com/attachments/1259608308768178317/1555049789517987942/image-removebg-preview_13.png?backend=b2&ex=6ac26839&is=6ac116b9&hm=035cca6e13081f123acdc07b65a41807f5142ed3e4926f4b45d6bea7b5ce78f9&", 
+            "กระจก": "https://cdn-icons-png.flaticon.com/512/5770/5770678.png",  
+            "default": "https://cdn-icons-png.flaticon.com/512/6532/6532057.png"  
+        };
+        function getItemImageUrl(itemName) {
+            let lowerName = itemName.toLowerCase();
+            for (let key in itemIcons) if (lowerName.includes(key)) return itemIcons[key];
+            return itemIcons["default"];
+        }
+
+        window.switchPage = function(pageId) {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            let activeBtn = document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
+            if(activeBtn) activeBtn.classList.add('active');
+        }
+
+        window.selectItemForAction = function(itemName) {
+            if (!window.isAdmin) return; 
+            document.getElementById('itemName').value = itemName;
+            document.getElementById('itemQty').focus(); 
+        }
+
+        window.selectMemberForAction = function(memberName) {
+            if (!window.isAdmin) return; 
+            let memberSelect = document.getElementById('memberSelect');
+            if (memberSelect) memberSelect.value = memberName;
+            
+            let debtMemberSelect = document.getElementById('debtMemberSelect');
+            if (debtMemberSelect) {
+                debtMemberSelect.value = memberName;
+                document.getElementById('debtItemName').focus(); 
+            }
+        }
+
+        window.addMasterItem = function() {
+            try {
+                let name = document.getElementById('newMasterItem').value.trim();
+                if(name === "") return alert("❌ กรุณาพิมพ์ชื่อไอเทมก่อนกดเพิ่ม");
+                if(window.gangData.masterItems.includes(name)) return alert("❌ มีไอเทมนี้ในระบบอยู่แล้ว!");
+                window.gangData.masterItems.push(name); 
+                document.getElementById('newMasterItem').value = '';
+                window.saveData(); renderAll();
+            } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        }
+
+        window.deleteMasterItem = function(name) {
+            if(confirm(`ลบ "${name}" ออกจากฐานข้อมูล?`)) {
+                window.gangData.masterItems = window.gangData.masterItems.filter(item => item !== name); 
+                window.saveData(); renderAll();
+            }
+        }
+
+        window.addMember = function() {
+            try {
+                let n = document.getElementById('newMemberName').value.trim();
+                if(n === "") return alert("❌ กรุณาพิมพ์ชื่อสมาชิกก่อนกดเพิ่ม");
+                if(n === CENTRAL_NAME || n.includes("กองกลาง")) return alert("❌ ไม่สามารถใช้ชื่อนี้ได้");
+                if(window.gangData.members.includes(n)) return alert("❌ มีรายชื่อนี้ในแก๊งอยู่แล้ว!");
+                
+                window.gangData.members.push(n); 
+                if(!window.gangData.contributions) window.gangData.contributions = {};
+                if(!window.gangData.debt) window.gangData.debt = {};
+                if(!window.gangData.personalDebt) window.gangData.personalDebt = {};
+                window.gangData.contributions[n] = {}; 
+                window.gangData.debt[n] = {}; 
+                window.gangData.personalDebt[n] = {}; 
+                
+                document.getElementById('newMemberName').value = ''; 
+                window.saveData(); renderAll();
+            } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        }
+
+        window.removeMember = function(n) {
+            if(confirm(`ลบ ${n} ออกจากระบบ?`)) {
+                window.gangData.members = window.gangData.members.filter(m => m !== n); 
+                if(window.gangData.contributions) delete window.gangData.contributions[n]; 
+                if(window.gangData.debt) delete window.gangData.debt[n]; 
+                if(window.gangData.personalDebt) delete window.gangData.personalDebt[n]; 
+                window.saveData(); renderAll();
+            }
+        }
+
+        window.submitAction = function(t) {
+            try {
+                let m=document.getElementById('memberSelect').value, 
+                    i=document.getElementById('itemName').value.trim(), 
+                    q=parseInt(document.getElementById('itemQty').value),
+                    note=document.getElementById('actionNote').value.trim(); 
+                
+                if(!m||i===""||isNaN(q)||q<=0) return alert("❌ กรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+                if(!window.gangData.masterItems.includes(i)) window.gangData.masterItems.push(i);
+                
+                if(t==='ฝาก'){ 
+                    window.gangData.stash[i]=(window.gangData.stash[i]||0)+q; 
+                    if(m !== CENTRAL_NAME) { 
+                        if(!window.gangData.contributions[m]) window.gangData.contributions[m]={}; 
+                        window.gangData.contributions[m][i]=(window.gangData.contributions[m][i]||0)+q; 
+                    }
+                }
+                else if(t==='เบิก'){ 
+                    if(!window.gangData.stash[i]||window.gangData.stash[i]<q) return alert("❌ ของในคลังมีไม่พอให้เบิก!"); 
+                    window.gangData.stash[i]-=q; 
+                    if(window.gangData.stash[i]===0) delete window.gangData.stash[i]; 
+                }
+                // ================= เพิ่มระบบหักยอดฝากผิดที่นี่ =================
+                else if(t==='หักยอดฝากผิด'){ 
+                    if(!window.gangData.stash[i]||window.gangData.stash[i]<q) return alert("❌ ของในคลังมีไม่พอให้หักออก!"); 
+                    
+                    if(m !== CENTRAL_NAME) {
+                        let currentC = (window.gangData.contributions[m] && window.gangData.contributions[m][i]) || 0;
+                        if(currentC < q) return alert(`❌ ${m} มียอดส่ง ${i} แค่ ${currentC.toLocaleString()} ชิ้น ไม่พอให้หักออกครับ!`);
+                        
+                        window.gangData.contributions[m][i] -= q;
+                        if(window.gangData.contributions[m][i] <= 0) delete window.gangData.contributions[m][i];
+                    }
+
+                    window.gangData.stash[i]-=q; 
+                    if(window.gangData.stash[i]===0) delete window.gangData.stash[i]; 
+                    
+                    t = 'แก้ไข/หักยอด'; // เปลี่ยนชื่อประเภทตอนโชว์ในประวัติ
+                }
+                
+                let d = new Date();
+                let timeStr = d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                window.gangData.logs.unshift({ time: timeStr, member: m, type: t, item: i, qty: q, note: note }); 
+                
+                document.getElementById('itemQty').value=''; 
+                document.getElementById('actionNote').value=''; 
+                window.saveData(); renderAll();
+                
+                if(t === 'แก้ไข/หักยอด') alert("✅ ดึงของออกจากคลัง และริบยอดโควต้าคืนเรียบร้อยแล้ว!");
+            } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        }
+
+        window.managePersonalDebt = function(actionType) {
+            try {
+                let m = document.getElementById('debtMemberSelect').value;
+                let i = document.getElementById('debtItemName').value.trim();
+                let q = parseInt(document.getElementById('debtQty').value);
+
+                if(!m || i === "" || isNaN(q) || q <= 0) return alert("❌ กรุณากรอกข้อมูลหนี้ให้ครบถ้วน");
+
+                if(!window.gangData.personalDebt[m]) window.gangData.personalDebt[m] = {};
+                let currentDebt = window.gangData.personalDebt[m][i] || 0;
+
+                let logType = ""; let logNote = "";
+
+                if(actionType === 'add') {
+                    window.gangData.personalDebt[m][i] = currentDebt + q;
+                    logType = 'ยืม/ติดหนี้'; logNote = 'สร้างหนี้ค้างชำระแก๊ง';
+                } else if (actionType === 'pay') {
+                    if(currentDebt < q) return alert(`❌ ยอดชำระ (${q}) มากกว่ายอดหนี้ค้างชำระที่มีอยู่ (${currentDebt})`);
+                    window.gangData.personalDebt[m][i] = currentDebt - q;
+                    if(window.gangData.personalDebt[m][i] === 0) delete window.gangData.personalDebt[m][i];
+                    logType = 'ชำระหนี้'; logNote = 'เคลียร์หนี้แก๊ง';
+                }
+
+                if(!window.gangData.masterItems.includes(i)) window.gangData.masterItems.push(i);
+
+                let d = new Date();
+                let timeStr = d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                window.gangData.logs.unshift({ time: timeStr, member: m, type: logType, item: i, qty: q, note: logNote });
+
+                document.getElementById('debtItemName').value = '';
+                document.getElementById('debtQty').value = '';
+                window.saveData(); renderAll();
+
+            } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        }
+
+        window.clearLogs = function() { if(confirm('⚠️ ยืนยันการล้างประวัติทั้งหมด?')){ window.gangData.logs=[]; window.saveData(); renderAll();} }
+
+        window.addQuotaItem = function() { 
+            let i=document.getElementById('targetItem').value.trim(), q=parseInt(document.getElementById('targetQty').value); 
+            if(i===""||isNaN(q)||q<=0) return alert("❌ กรุณากรอกไอเทมและจำนวนให้ถูกต้อง"); 
+            let ex=window.gangData.quota.find(x=>x.item===i); 
+            if(ex) ex.qty=q; else window.gangData.quota.push({item:i,qty:q}); 
+            document.getElementById('targetItem').value=''; document.getElementById('targetQty').value=''; 
+            window.saveData(); renderAll();
+        }
+
+        window.removeQuotaItem = function(idx) { 
+            let itemToRemove = window.gangData.quota[idx].item;
+            if(confirm(`ลบเป้าหมาย ${itemToRemove} ออก?\n(ยอดค้างส่งสะสมของไอเทมนี้จะถูกล้างไปด้วย)`)){
+                window.gangData.quota.splice(idx,1); 
+                if(window.gangData.debt) {
+                    Object.keys(window.gangData.debt).forEach(m => {
+                        if(window.gangData.debt[m][itemToRemove]) delete window.gangData.debt[m][itemToRemove];
+                    });
+                }
+                window.saveData(); renderAll();
+            }
+        }
+
+        window.endDayReset = function() { 
+            if(confirm("⚠️ ยืนยันการปิดยอดรายวัน?\n- คนที่ส่งไม่ครบ ยอดจะทบเป็นหนี้ในวันพรุ่งนี้\n- คนที่ส่งครบแล้ว ยอดจะถูกรีเซ็ตเป็น 0")){ 
+                if(!window.gangData.debt) window.gangData.debt = {};
+                window.gangData.members.forEach(m => { 
+                    if(!window.gangData.debt[m]) window.gangData.debt[m] = {};
+                    window.gangData.quota.forEach(q => {
+                        let sent = (window.gangData.contributions[m] && window.gangData.contributions[m][q.item]) || 0;
+                        let currentDebt = window.gangData.debt[m][q.item] || 0;
+                        let totalReq = q.qty + currentDebt;
+                        let newDebt = totalReq - sent;
+                        window.gangData.debt[m][q.item] = newDebt > 0 ? newDebt : 0;
+                    });
+                    window.gangData.contributions[m] = {}; 
+                }); 
+                window.saveData(); renderAll(); 
+            } 
+        }
+
+        window.clearAllDebt = function() {
+            if(confirm("⚠️ ยืนยันการล้าง 'ยอดค้างส่ง (หนี้)' ของทุกคนเป็น 0 ?\n(ยอดที่เพิ่งส่งของวันนี้จะไม่หาย)")) {
+                window.gangData.members.forEach(m => {
+                    if(window.gangData.debt) window.gangData.debt[m] = {};
+                });
+                window.saveData(); renderAll();
+            }
+        }
+
+        window.exportData = function() { 
+            const blob=new Blob([JSON.stringify(window.gangData,null,2)],{type:"application/json"}); 
+            const a=document.createElement('a'); a.download=`gang_backup_${new Date().toISOString().split('T')[0]}.json`; 
+            a.href=URL.createObjectURL(blob); a.click(); 
+        }
+
+        // ================= แสดงผล =================
+        window.renderAll = function() { 
+            renderStash(); renderMasterItems(); updateDatalist(); renderMembers(); renderLogs(); renderQuota(); 
+        }
+        
+        function updateDatalist() {
+            let dl = document.getElementById('inventoryList'); dl.innerHTML = '';
+            let allItems = new Set([...window.gangData.masterItems, ...Object.keys(window.gangData.stash)]);
+            allItems.forEach(item => { dl.innerHTML += `<option value="${item}"></option>`; });
+        }
+
+        function renderMembers() {
+            let lst = document.getElementById('memberList');
+            let sel = document.getElementById('memberSelect');
+            let debtSel = document.getElementById('debtMemberSelect'); 
+            
+            lst.innerHTML = ''; 
+            sel.innerHTML = '<option value="" disabled selected>เลือกชื่อผู้ทำรายการ</option>';
+            sel.innerHTML += `<option value="${CENTRAL_NAME}" style="color: var(--accent-gold); font-weight: bold;">${CENTRAL_NAME}</option>`;
+            if(debtSel) debtSel.innerHTML = '<option value="" disabled selected>เลือกสมาชิก</option>';
+
+            window.gangData.members.forEach(n=>{
+                let delBtn = window.isAdmin ? `<span style="color:var(--accent-red); cursor:pointer; font-size:13px;" onclick="event.stopPropagation(); removeMember('${n}')">ลบออก</span>` : '';
+                
+                let debtHtml = '';
+                if(window.gangData.personalDebt && window.gangData.personalDebt[n]) {
+                    let debts = Object.keys(window.gangData.personalDebt[n]);
+                    if(debts.length > 0) {
+                        let debtItems = debts.map(dItem => `${dItem} ${window.gangData.personalDebt[n][dItem].toLocaleString()}`).join(', ');
+                        debtHtml = `<div style="font-size: 13px; color: var(--accent-red); margin-top: 8px;">⚠️ ติดหนี้ค้าง: ${debtItems}</div>`;
+                    }
+                }
+
+                lst.innerHTML+=`
+                <li style="flex-direction: column; align-items: flex-start; cursor: pointer;" onclick="selectMemberForAction('${n}')" title="คลิกเพื่อเลือกชื่อนี้ลงในช่องทำรายการ">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <span style="font-weight: 500; color: white;">${n}</span>
+                        ${delBtn}
+                    </div>
+                    ${debtHtml}
+                </li>`;
+                
+                sel.innerHTML+=`<option value="${n}">${n}</option>`;
+                if(debtSel) debtSel.innerHTML+=`<option value="${n}">${n}</option>`;
+            });
+        }
+
+        function renderStash() {
+            let moneyContainer = document.getElementById('moneyContainer');
+            let grid = document.getElementById('stashGrid');
+            moneyContainer.innerHTML = ''; 
+            grid.innerHTML = ''; 
+            
+            let items = Object.keys(window.gangData.stash);
+            let hasOtherItems = false;
+            let hasMoney = false;
+
+            if(items.length === 0) { 
+                grid.innerHTML = '<p style="color:var(--text-muted); font-size:14px; grid-column: 1 / -1;">ยังไม่มีทรัพยากรในคลัง</p>'; 
+            } else { 
+                items.forEach(item => { 
+                    let lowerItem = item.toLowerCase();
+                    let qty = window.gangData.stash[item];
+                    let imgUrl = getItemImageUrl(item); 
+                    
+                    if(lowerItem.includes('เงิน') || lowerItem.includes('money') || lowerItem.includes('cash')) {
+                        hasMoney = true;
+                        moneyContainer.innerHTML += `
+                            <div class="money-card" onclick="selectItemForAction('${item}')" title="คลิกเพื่อทำรายการฝาก/เบิกเงิน">
+                                <img src="${imgUrl}" class="money-icon" alt="${item}">
+                                <div class="money-info">
+                                    <span class="money-label">ยอดเงินแก๊ง (${item})</span>
+                                    <span class="money-amount">${qty.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        hasOtherItems = true;
+                        grid.innerHTML += `<div class="stash-item" onclick="selectItemForAction('${item}')" title="คลิกเพื่อทำรายการ"><img src="${imgUrl}" class="item-icon" alt="${item}"><div class="item-name">${item}</div><div class="item-qty">${qty.toLocaleString()}</div></div>`; 
+                    }
+                }); 
+                
+                if(!hasOtherItems && hasMoney) {
+                    grid.innerHTML = '<p style="color:var(--text-muted); font-size:14px; grid-column: 1 / -1;">ไม่มีไอเทมอื่นๆ ในคลัง</p>'; 
+                }
+            }
+        }
+
+        function renderMasterItems() {
+            let grid = document.getElementById('masterItemsGrid'); grid.innerHTML = '';
+            window.gangData.masterItems.forEach(item => {
+                let imgUrl = getItemImageUrl(item);
+                let delBtn = window.isAdmin ? `<button class="del-item-btn" onclick="deleteMasterItem('${item}')">✕</button>` : '';
+                grid.innerHTML += `<div class="stash-item">${delBtn}<img src="${imgUrl}" class="item-icon" alt="${item}"><div class="item-name">${item}</div></div>`;
+            });
+        }
+
+        window.renderLogs = function() {
+            let lst=document.getElementById('logList'), sq=(document.getElementById('logSearchQuery')?.value||"").toLowerCase(), tf=document.getElementById('logTypeFilter')?.value||"all";
+            lst.innerHTML=''; if(window.gangData.logs.length===0){ lst.innerHTML='<p style="color:var(--text-muted); padding:20px 0;">ไม่มีประวัติทำรายการ</p>'; return; }
+            
+            let fil = window.gangData.logs.filter(l => {
+                let matchSearch = l.member.toLowerCase().includes(sq) || l.item.toLowerCase().includes(sq);
+                let matchType = (tf === "all");
+                if (tf === "ฝาก" && l.type === "ฝาก") matchType = true;
+                if (tf === "เบิก" && l.type === "เบิก") matchType = true;
+                if (tf === "ยืม/ติดหนี้" && (l.type === "ยืม/ติดหนี้" || l.type === "ชำระหนี้")) matchType = true;
+                if (tf === "แก้ไข/หักยอด" && l.type === "แก้ไข/หักยอด") matchType = true;
+                return matchSearch && matchType;
+            });
+
+            if(fil.length===0){ lst.innerHTML='<p style="color:var(--text-muted); padding:20px 0;">ไม่พบข้อมูล</p>'; return; }
+            
+            fil.slice(0,100).forEach(l=>{
+                let col = 'var(--text-main)';
+                if (l.type === 'ฝาก') col = 'var(--accent-green)';
+                else if (l.type === 'เบิก') col = 'var(--accent-red)';
+                else if (l.type === 'ยืม/ติดหนี้') col = 'var(--accent-orange)';
+                else if (l.type === 'ชำระหนี้') col = 'var(--accent-blue)';
+                else if (l.type === 'แก้ไข/หักยอด') col = 'var(--accent-orange)';
+                
+                let noteHtml = l.note ? `<span style="color:var(--text-muted); font-size:13px; margin-top:4px;">📝 ${l.note}</span>` : '';
+                let nameColor = (l.member === CENTRAL_NAME) ? 'var(--accent-gold)' : col;
+
+                lst.innerHTML+=`
+                <li>
+                    <div style="display: flex; flex-direction: column;">
+                        <span><strong style="color:${nameColor}; font-weight:500;">${l.member}</strong> <span style="color:${col}">${l.type}</span> <span style="color:white; font-weight:500;">${l.item}</span> <span style="color:var(--text-muted)">(${l.qty.toLocaleString()})</span></span>
+                        ${noteHtml}
+                    </div>
+                    <span style="color:var(--text-muted); font-size:12px; text-align:right; min-width:100px;">${l.time}</span>
+                </li>`;
+            });
+        }
+
+        function renderQuota() {
+            let bc=document.getElementById('activeQuotasContainer'); bc.innerHTML='';
+            window.gangData.quota.forEach((q,i)=>{ 
+                let delBtn = window.isAdmin ? `<span class="del-badge" onclick="removeQuotaItem(${i})">✕</span>` : '';
+                bc.innerHTML+=`<div class="quota-badge">${q.item} x${q.qty.toLocaleString()}${delBtn}</div>`; 
+            });
+            let ct=document.getElementById('quotaListContainer'); ct.innerHTML='';
+            if(window.gangData.quota.length===0){ ct.innerHTML='<p style="color:var(--text-muted); font-size:14px; grid-column:1/-1;">ยังไม่มีการตั้งเป้าหมาย</p>'; return; }
+            
+            window.gangData.members.forEach(n=>{
+                let pass=true, ph=`<ul class="item-progress-list">`;
+                window.gangData.quota.forEach(q=>{
+                    let currentDebt = (window.gangData.debt && window.gangData.debt[n] && window.gangData.debt[n][q.item]) || 0;
+                    let target = q.qty + currentDebt; 
+                    
+                    let c=(window.gangData.contributions[n]&&window.gangData.contributions[n][q.item])||0;
+                    let ok = c >= target; 
+                    if(!ok) pass=false;
+                    
+                    let debtAlert = currentDebt > 0 ? ` <span style="color:var(--accent-red); font-size:11px;">(ค้าง ${currentDebt.toLocaleString()})</span>` : '';
+
+                    ph+=`<li><span>${q.item}${debtAlert} <span style="color:var(--text-main)">(${c.toLocaleString()}/${target.toLocaleString()})</span></span><span class="${ok?'item-pass':'item-fail'}">${ok?'ครบ':`ขาด ${(target-c).toLocaleString()}`}</span></li>`;
+                }); ph+=`</ul>`;
+                ct.innerHTML+=`<div class="quota-card"><div class="quota-header"><span class="quota-name">${n}</span><span class="quota-status ${pass?'status-pass':'status-fail'}">${pass?'จ่ายแล้ว':'ยังไม่จ่าย'}</span></div>${ph}</div>`;
+            });
+        }
+
+        switchPage('page-stash');
+    </script>
+</body>
+</html>
