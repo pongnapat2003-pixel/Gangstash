@@ -88,11 +88,11 @@
         .money-card {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(9, 9, 11, 0.9));
             border: 1px solid rgba(16, 185, 129, 0.4);
-            border-radius: var(--radius-md);
-            padding: 12px 20px;
+            border-radius: var(--radius-md); /* ปรับความโค้งขอบให้เล็กลง */
+            padding: 12px 20px; /* ลดความสูงกล่อง (Padding) */
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 16px; /* ลดระยะห่างระหว่างรูปกับตัวหนังสือ */
             cursor: pointer;
             transition: all 0.3s ease;
         }
@@ -102,10 +102,10 @@
             box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15);
         }
         .money-card:active { transform: scale(0.98); }
-        .money-icon { width: 45px; height: 45px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+        .money-icon { width: 45px; height: 45px; /* ปรับขนาดรูปให้เล็กลง */ object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
         .money-info { display: flex; flex-direction: column; gap: 2px; }
-        .money-label { color: var(--accent-green); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;}
-        .money-amount { font-size: 26px; font-weight: 700; color: white; line-height: 1; }
+        .money-label { color: var(--accent-green); font-size: 12px; /* ปรับขนาดฟอนต์หัวข้อ */ font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;}
+        .money-amount { font-size: 26px; /* ปรับขนาดตัวเลขเงินให้เล็กลงพอดีตา */ font-weight: 700; color: white; line-height: 1; }
 
         /* ================= คลัง & Grid ================= */
         .stash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
@@ -299,9 +299,12 @@
                 </div>
                 <button class="btn-outline admin-only" style="padding: 10px 16px; height: fit-content;" onclick="clearLogs()">ล้างประวัติเก่า</button>
             </div>
-            <div style="display: flex; gap: 16px; margin-bottom: 32px; max-width: 600px;">
-                <input type="text" id="logSearchQuery" placeholder="🔍 ค้นหาชื่อคน หรือ ชื่อไอเทม..." oninput="renderLogs()" style="flex: 2; margin-bottom:0;">
-                <select id="logTypeFilter" onchange="renderLogs()" style="flex: 1; margin-bottom:0;">
+            
+            <!-- 🌟 แยกช่องค้นหา 2 ช่อง: ชื่อคน กับ ชื่อไอเทม -->
+            <div style="display: flex; gap: 16px; margin-bottom: 32px; max-width: 800px; flex-wrap: wrap;">
+                <input type="text" id="logSearchName" placeholder="👤 ค้นหาชื่อคน..." oninput="renderLogs()" style="flex: 1; min-width: 150px; margin-bottom:0;">
+                <input type="text" id="logSearchItem" placeholder="📦 ค้นหาชื่อไอเทม..." oninput="renderLogs()" style="flex: 1; min-width: 150px; margin-bottom:0;">
+                <select id="logTypeFilter" onchange="renderLogs()" style="flex: 1; min-width: 150px; margin-bottom:0;">
                     <option value="all">ทุกประเภท</option>
                     <option value="ฝาก">เฉพาะ นำเข้า</option>
                     <option value="เบิก">เฉพาะ เบิกออก</option>
@@ -310,6 +313,7 @@
                     <option value="แก้ไข/หักยอด">เฉพาะ แก้ไข/หักยอด</option>
                 </select>
             </div>
+
             <ul id="logList" class="basic-list"></ul>
         </div>
     </div>
@@ -555,7 +559,6 @@
             } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); }
         }
 
-        // ================= จัดการหนี้ (เชื่อมต่อกับคลัง) =================
         window.managePersonalDebt = function(actionType) {
             try {
                 let m = document.getElementById('debtMemberSelect').value;
@@ -571,7 +574,6 @@
                 let logType = ""; let logNote = "";
 
                 if(actionType === 'add') {
-                    // ถ้าติ๊กถูกให้ดึงของจากคลังด้วย
                     if (syncStash) {
                         if(!window.gangData.stash[i] || window.gangData.stash[i] < q) {
                             return alert(`❌ ${i} ในคลังมีไม่พอให้ยืม! (มีแค่ ${(window.gangData.stash[i]||0).toLocaleString()})\n\n💡 ถ้าต้องการแค่ลงบัญชีค่าปรับ โดยไม่ดึงของจากคลัง ให้เอาติ๊กถูกด้านล่างออกครับ`);
@@ -589,7 +591,6 @@
                 else if (actionType === 'pay') {
                     if(currentDebt < q) return alert(`❌ ยอดชำระ (${q}) มากกว่ายอดหนี้ค้างชำระที่มีอยู่ (${currentDebt})`);
                     
-                    // ถ้าติ๊กถูกให้เอาของคืนเข้าคลัง
                     if (syncStash) {
                         window.gangData.stash[i] = (window.gangData.stash[i] || 0) + q;
                         logNote = 'คืนของเข้าคลัง (ชำระหนี้)';
@@ -778,22 +779,32 @@
             });
         }
 
+        // ================= อัปเดตฟังก์ชันค้นหาแยกช่อง =================
         window.renderLogs = function() {
-            let lst=document.getElementById('logList'), sq=(document.getElementById('logSearchQuery')?.value||"").toLowerCase(), tf=document.getElementById('logTypeFilter')?.value||"all";
+            let lst=document.getElementById('logList');
+            let sqName=(document.getElementById('logSearchName')?.value||"").toLowerCase();
+            let sqItem=(document.getElementById('logSearchItem')?.value||"").toLowerCase();
+            let tf=document.getElementById('logTypeFilter')?.value||"all";
+            
             lst.innerHTML=''; if(window.gangData.logs.length===0){ lst.innerHTML='<p style="color:var(--text-muted); padding:20px 0;">ไม่มีประวัติทำรายการ</p>'; return; }
             
             let fil = window.gangData.logs
                 .map((log, index) => ({ logData: log, originalIndex: index }))
                 .filter(item => {
                     let l = item.logData;
-                    let matchSearch = l.member.toLowerCase().includes(sq) || l.item.toLowerCase().includes(sq);
+                    
+                    // เช็คช่องชื่อคน และ ช่องชื่อของ แยกกัน (ต้องตรงทั้ง 2 เงื่อนไข)
+                    let matchName = l.member.toLowerCase().includes(sqName);
+                    let matchItem = l.item.toLowerCase().includes(sqItem);
+                    
                     let matchType = (tf === "all");
                     if (tf === "ฝาก" && l.type === "ฝาก") matchType = true;
                     if (tf === "เบิก" && l.type === "เบิก") matchType = true;
                     if (tf === "ยืม/ติดหนี้" && (l.type === "ยืม/ติดหนี้" || l.type === "ชำระหนี้")) matchType = true;
                     if (tf === "โอนยอด" && l.type === "โอนยอด") matchType = true;
                     if (tf === "แก้ไข/หักยอด" && l.type === "แก้ไข/หักยอด") matchType = true;
-                    return matchSearch && matchType;
+                    
+                    return matchName && matchItem && matchType;
                 });
 
             if(fil.length===0){ lst.innerHTML='<p style="color:var(--text-muted); padding:20px 0;">ไม่พบข้อมูล</p>'; return; }
